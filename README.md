@@ -8,13 +8,13 @@ Built alongside it is a lightweight Python Bridge Server and a beautifully desig
 ---
 
 ## Tech Stack
-**Core Engine:** C++20, MSVC, CMake
-**Operating System Focus:** Windows Kernel API (`pdh.h`, `psapi.h`, `windows.h`)
-**Concurrency Pattern:** Single-Producer Single-Consumer (SPSC) Lock-Free Ring Buffer
-**Inter-Process Communication:** Named Shared Memory Mapping, Sequence Locks
-**Backend Bridge:** Python 3 (Native `http.server`, `mmap`, `struct`)
-**Frontend Dashboard:** HTML5, CSS3 Variables, Vanilla JavaScript, jsPDF
-**UI Design Aesthetic:** Premium Glassmorphism, CSS Conic Gradients, Google Fonts
+- **Core Engine:** C++20, MSVC, CMake
+- **Operating System Focus:** Windows Kernel API (`pdh.h`, `psapi.h`, `windows.h`)
+- **Concurrency Pattern:** Single-Producer Single-Consumer (SPSC) Lock-Free Ring Buffer
+- **Inter-Process Communication:** Named Shared Memory Mapping, Sequence Locks
+- **Backend Bridge:** Python 3 (Native `http.server`, `mmap`, `struct`)
+- **Frontend Dashboard:** HTML5, CSS3 Variables, Vanilla JavaScript, jsPDF
+- **UI Design Aesthetic:** Premium Glassmorphism, CSS Conic Gradients, Google Fonts
 
 ---
 
