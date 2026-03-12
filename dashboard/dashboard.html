@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova-Optimizer Engine Pulse</title>
+    <!-- Modern Typography from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <!-- Include jsPDF for exporting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0d0f17;
+            --card-bg: rgba(20, 24, 38, 0.45);
+            --card-border: rgba(255, 255, 255, 0.08);
+
+            /* Vibrant Gradients */
+            --accent-blue: #00f0ff;
+            --accent-blue-dark: #0077ff;
+            --accent-purple: #8a2be2;
+            --accent-purple-light: #d400ff;
+
+            --text-primary: #ffffff;
+            --text-secondary: #8e95a5;
+            --text-tertiary: #5d647b;
+
+            --cpu-gradient: conic-gradient(var(--accent-blue) var(--prog), transparent 0);
+            --ram-gradient: conic-gradient(var(--accent-purple-light) var(--prog), transparent 0);
+        }
+
+        /* Test Console */
+        .test-console-card {
+            background: rgba(10, 12, 18, 0.4);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 30px;
+            margin-top: 25px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .test-console-output {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px inset var(--card-border);
+            border-radius: 8px;
+            padding: 15px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: #a9b7c6;
+            margin-top: 15px;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 2px;
+        }
+
+        .log-time {
+            color: var(--text-tertiary);
+            margin-right: 15px;
+        }
+
+        .log-high {
+            color: #ff3b30;
+        }
+
+        .time-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 6px;
+            width: 80px;
+            font-size: 13px;
+            font-family: 'JetBrains Mono', monospace;
+            outline: none;
+        }
+
+        .time-input:focus {
+            border-color: var(--accent-purple-light);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Background Ambient Glows */
+        body::before,
+        body::after {
+            content: '';
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            filter: blur(120px);
+            z-index: -1;
+            opacity: 0.15;
+            animation: float 10s infinite ease-in-out alternate;
+        }
+
+        body::before {
+            background: var(--accent-blue);
+            top: -200px;
+            left: -100px;
+        }
+
+        body::after {
+            background: var(--accent-purple);
+            bottom: -200px;
+            right: -100px;
+            animation-delay: -5s;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0) scale(1);
+            }
+
+            100% {
+                transform: translateY(50px) scale(1.1);
+            }
+        }
+
+        /* Glassmorphism Container */
+        .dashboard-container {
+            background: var(--card-bg);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--card-border);
+            border-radius: 28px;
+            padding: 40px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            width: 1000px;
+            max-width: 95%;
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            transform: translateY(20px);
+            opacity: 0;
+            animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeUp {
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Header */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 25px;
+        }
+
+        .header-titles h1 {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+            background: linear-gradient(90deg, #fff, var(--text-secondary));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-titles h2 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent-blue);
+            letter-spacing: 4px;
+        }
+
+        /* Status Indicator */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 18px;
+            border-radius: 50px;
+            border: 1px solid var(--card-border);
+        }
+
+        .pulse-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #ff3b30;
+            /* default offline */
+            box-shadow: 0 0 10px #ff3b30;
+            transition: all 0.5s ease;
+        }
+
+        .pulse-dot.online {
+            background-color: #32d74b;
+            box-shadow: 0 0 12px #32d74b;
+            animation: pulse 1.5s infinite;
+        }
+
+        .action-button {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-left: 10px;
+        }
+
+        .action-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .action-button.start {
+            color: #32d74b;
+            border-color: rgba(50, 215, 75, 0.3);
+        }
+
+        .action-button.start:hover {
+            background: rgba(50, 215, 75, 0.1);
+        }
+
+        .action-button.stop {
+            color: #ff3b30;
+            border-color: rgba(255, 59, 48, 0.3);
+        }
+
+        .action-button.stop:hover {
+            background: rgba(255, 59, 48, 0.1);
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(50, 215, 75, 0.5);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(50, 215, 75, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(50, 215, 75, 0);
+            }
+        }
+
+        #engine-status-text {
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+        }
+
+        /* Grid Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 25px;
+        }
+
+        .metric-card {
+            background: rgba(10, 12, 18, 0.4);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .details-card {
+            grid-column: span 2;
+            background: rgba(10, 12, 18, 0.4);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 30px;
+        }
+
+        .card-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .card-header h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 1px;
+        }
+
+        .badge {
+            font-size: 11px;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 6px;
+            letter-spacing: 1px;
+        }
+
+        .cpu-badge {
+            background: rgba(0, 240, 255, 0.15);
+            color: var(--accent-blue);
+        }
+
+        .ram-badge {
+            background: rgba(212, 0, 255, 0.15);
+            color: var(--accent-purple-light);
+        }
+
+        /* Circular Progress Bars (CSS Conic Gradient) */
+        .circular-progress-wrapper {
+            position: relative;
+            width: 180px;
+            height: 180px;
+            margin-bottom: 25px;
+            filter: drop-shadow(0 0 20px rgba(0, 0, 0, 0.5));
+        }
+
+        .circular-progress {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: #151824;
+            /* Fallback */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            --prog: 0%;
+            transition: --prog 0.3s ease-out;
+        }
+
+        #cpu-progress {
+            background: conic-gradient(var(--accent-blue) var(--prog), #151824 0);
+            box-shadow: inset 0 0 20px rgba(0, 240, 255, 0.1);
+        }
+
+        #ram-progress {
+            background: conic-gradient(var(--accent-purple-light) var(--prog), #151824 0);
+            box-shadow: inset 0 0 20px rgba(212, 0, 255, 0.1);
+        }
+
+        /* Needed for smooth transition of CSS variables */
+        @property --prog {
+            syntax: '<percentage>';
+            inherits: false;
+            initial-value: 0%;
+        }
+
+        .inner-circle {
+            width: 85%;
+            height: 85%;
+            border-radius: 50%;
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            box-shadow: inset 0 5px 10px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .value-text {
+            font-size: 42px;
+            font-weight: 300;
+            margin-left: 5px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .percent {
+            font-size: 18px;
+            color: var(--text-tertiary);
+        }
+
+        .metric-details {
+            width: 100%;
+            text-align: center;
+        }
+
+        .detail-label {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .detail-value {
+            font-size: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-primary);
+        }
+
+        /* Mini Bar Chart */
+        .mini-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 4px;
+            height: 40px;
+        }
+
+        .bar {
+            width: 8px;
+            background: var(--accent-blue-dark);
+            border-radius: 4px 4px 0 0;
+            transition: height 0.3s ease;
+        }
+
+        /* Details Section */
+        .details-card h3 {
+            font-size: 14px;
+            color: var(--text-secondary);
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+        }
+
+        .ipc-data-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: var(--text-tertiary);
+        }
+
+        .highlight {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .highlight.blue {
+            color: var(--accent-blue);
+        }
+
+        .highlight.purple {
+            color: #d400ff;
+        }
+
+        .highlight.active {
+            color: #32d74b;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 15px;
+        }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 40px;
+            width: 600px;
+            max-width: 90%;
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transform: scale(0.95);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 15px;
+        }
+
+        .modal-header h2 {
+            font-size: 20px;
+            color: var(--accent-blue);
+            letter-spacing: 1px;
+        }
+
+        .close-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close-btn:hover {
+            color: #ff3b30;
+        }
+
+        /* Button */
+        .details-btn {
+            background: rgba(0, 240, 255, 0.1);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            color: var(--accent-blue);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .details-btn:hover {
+            background: rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+
+        <header class="dashboard-header">
+            <div class="header-titles">
+                <h1>NOVA-OPTIMIZER</h1>
+                <h2>HARDWARE-SYNCHRONIZED SYSTEM ENGINE</h2>
+            </div>
+            <div class="status-indicator"
+                style="flex-wrap: wrap; justify-content: flex-end; background: transparent; border: none; padding: 0;">
+                <div
+                    style="display: flex; align-items: center; gap: 12px; background: rgba(0, 0, 0, 0.3); padding: 10px 18px; border-radius: 50px; border: 1px solid var(--card-border); margin-bottom: 10px;">
+                    <div class="pulse-dot" id="engine-status-dot"></div>
+                    <span id="engine-status-text">ENGINE OFFLINE</span>
+                </div>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <button class="action-button start" id="start-engine-btn" onclick="controlEngine('start')">▶ START
+                        ENGINE</button>
+                    <button class="action-button stop" id="stop-engine-btn" onclick="controlEngine('stop')">⬛
+                        STOP</button>
+                    <button class="action-button" onclick="exportPDF()" id="export-btn">📄 EXPORT PDF</button>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <span style="font-size: 12px; color: var(--text-secondary); font-weight: 600;">TIMED LOG TEST
+                        (MINUTES):</span>
+                    <input type="number" id="test-duration" class="time-input" value="1.0" min="0.1" step="0.1">
+                    <button class="action-button"
+                        style="color: var(--accent-purple-light); border-color: rgba(212, 0, 255, 0.3);"
+                        onclick="startTest()">⚡ RUN TEST</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="dashboard-grid">
+
+            <!-- CPU Card -->
+            <div class="metric-card">
+                <div class="card-header">
+                    <h3>PROCESSOR CORE</h3>
+                    <span class="badge cpu-badge">CPU</span>
+                </div>
+                <div class="circular-progress-wrapper">
+                    <div class="circular-progress" id="cpu-progress">
+                        <div class="inner-circle">
+                            <span class="value-text" id="cpu-value">0<span class="percent">%</span></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-details">
+                    <p class="detail-label">Load Average</p>
+                    <div class="mini-chart" id="cpu-history">
+                        <!-- Bars injected by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- RAM Card -->
+            <div class="metric-card">
+                <div class="card-header">
+                    <h3>PHYSICAL MEMORY</h3>
+                    <span class="badge ram-badge">RAM</span>
+                </div>
+                <div class="circular-progress-wrapper">
+                    <div class="circular-progress" id="ram-progress">
+                        <div class="inner-circle">
+                            <span class="value-text" id="ram-value">0<span class="percent">%</span></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-details">
+                    <p class="detail-label">Active Working Set</p>
+                    <p class="detail-value" id="ram-usage-text">0.00 GB / 0.00 GB</p>
+                </div>
+            </div>
+
+            <!-- IPC & Sequence Stats -->
+            <div class="details-card">
+                <h3>INTER-PROCESS COMMUNICATION (IPC)</h3>
+                <div class="ipc-data-grid">
+                    <div class="data-row">
+                        <span>Buffer Protocol</span>
+                        <span class="highlight">Lock-Free SPSC</span>
+                    </div>
+                    <div class="data-row">
+                        <span>API Thread Polling</span>
+                        <span class="highlight blue">10 ms</span>
+                    </div>
+                    <div class="data-row">
+                        <span>Sequence Lock (Tick)</span>
+                        <span class="highlight purple mono" id="sequence-lock">0</span>
+                    </div>
+                    <div class="data-row"
+                        style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+                        <span>Optimizer Status</span>
+                        <span class="highlight active" id="optimizer-status">ACTIVE</span>
+                    </div>
+                </div>
+                <button class="details-btn" id="open-modal-btn">View Advanced Metrics</button>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Test Logs Modal -->
+    <div class="modal-overlay" id="test-modal">
+        <div class="modal-content" style="width: 800px; max-width: 95%;">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <h2>PYTHON TEST SCRIPT LOGS</h2>
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <button class="action-button" onclick="exportTestLogsPDF()" id="export-test-btn"
+                            style="color: var(--accent-purple-light); border-color: rgba(212, 0, 255, 0.3);">📄 EXPORT
+                            TEST LOGS PDF</button>
+                        <button class="close-btn" id="close-test-modal-btn">&times;</button>
+                    </div>
+                </div>
+            </div>
+            <div class="test-console-output" id="test-console" style="height: 400px; margin-top: 0;">
+                <div class="log-time" style="color:var(--text-secondary)">Awaiting test execution...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Overlay -->
+    <div class="modal-overlay" id="details-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>RAW KERNEL TELEMETRY</h2>
+                <button class="close-btn" id="close-modal-btn">&times;</button>
+            </div>
+
+            <div class="ipc-data-grid" style="gap: 18px;">
+                <div class="data-row">
+                    <span>Sequence Lock (Tick)</span>
+                    <span class="highlight purple mono" id="modal-sequence-lock">0</span>
+                </div>
+                <div class="data-row">
+                    <span>Exact CPU Usage</span>
+                    <span class="highlight mono" id="modal-cpu-exact">0.0000%</span>
+                </div>
+                <div class="data-row">
+                    <span>Total Physical RAM</span>
+                    <span class="highlight mono" id="modal-ram-total">0 Bytes</span>
+                </div>
+                <div class="data-row">
+                    <span>Used Working Set</span>
+                    <span class="highlight mono" id="modal-ram-used">0 Bytes</span>
+                </div>
+                <div class="data-row">
+                    <span>Available Free RAM</span>
+                    <span class="highlight mono" id="modal-ram-free">0 Bytes</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const cpuProgress = document.getElementById('cpu-progress');
+        const cpuValueText = document.getElementById('cpu-value');
+        const cpuHistoryContainer = document.getElementById('cpu-history');
+
+        const ramProgress = document.getElementById('ram-progress');
+        const ramValueText = document.getElementById('ram-value');
+        const ramUsageText = document.getElementById('ram-usage-text');
+
+        const statusDot = document.getElementById('engine-status-dot');
+        const statusText = document.getElementById('engine-status-text');
+        const optimizerStatus = document.getElementById('optimizer-status');
+
+        // Modal Elements
+        const modal = document.getElementById('details-modal');
+        const openBtn = document.getElementById('open-modal-btn');
+        const closeBtn = document.getElementById('close-modal-btn');
+        const modalSeq = document.getElementById('modal-sequence-lock');
+        const modalCpu = document.getElementById('modal-cpu-exact');
+        const modalRamTotal = document.getElementById('modal-ram-total');
+        const modalRamUsed = document.getElementById('modal-ram-used');
+        const modalRamFree = document.getElementById('modal-ram-free');
+
+        // Test Modal Elements
+        const testModal = document.getElementById('test-modal');
+        const closeTestModalBtn = document.getElementById('close-test-modal-btn');
+
+        // Modal Events
+        openBtn.addEventListener('click', () => { modal.classList.add('active'); });
+        closeBtn.addEventListener('click', () => { modal.classList.remove('active'); });
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.remove('active');
+        });
+
+        // Test Modal Events
+        closeTestModalBtn.addEventListener('click', () => { testModal.classList.remove('active'); });
+        testModal.addEventListener('click', (e) => {
+            if (e.target === testModal) testModal.classList.remove('active');
+        });
+
+        // Helper to convert bytes to GB
+        function bytesToGB(bytes) {
+            if (!bytes) return "0.00";
+            return (bytes / (1024 ** 3)).toFixed(2);
+        }
+
+        // History queue for mini chart
+        const MAX_BARS = 18;
+        const cpuHistory = new Array(MAX_BARS).fill(0);
+
+        function createMiniChart() {
+            cpuHistoryContainer.innerHTML = '';
+            for (let i = 0; i < MAX_BARS; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.style.height = '4px'; // minimum height
+                cpuHistoryContainer.appendChild(bar);
+            }
+        }
+
+        function updateMiniChart(newValue) {
+            cpuHistory.shift();
+            cpuHistory.push(newValue);
+
+            const bars = cpuHistoryContainer.children;
+            for (let i = 0; i < MAX_BARS; i++) {
+                // Height between 4px and 40px
+                const height = Math.max(4, (cpuHistory[i] / 100) * 40);
+                bars[i].style.height = `${height}px`;
+
+                // Dynamically color highest bars
+                if (cpuHistory[i] > 80) {
+                    bars[i].style.background = '#ff3b30';
+                } else if (cpuHistory[i] > 50) {
+                    bars[i].style.background = '#ffcc00';
+                } else {
+                    bars[i].style.background = 'var(--accent-blue-dark)';
+                }
+            }
+        }
+
+        // Fetch data from API loop
+        async function pollSharedMemory() {
+            try {
+                const response = await fetch('/api/pulse');
+                const data = await response.json();
+
+                if (data.status === 'online') {
+                    // UI Status
+                    if (!statusDot.classList.contains('online')) {
+                        statusDot.classList.add('online');
+                        statusText.innerText = "ENGINE ONLINE • SYNCHRONIZED";
+                        statusText.style.color = "#ffffff";
+                    }
+
+                    // Animate CPU
+                    cpuProgress.style.setProperty('--prog', `${data.cpu_usage_percent}%`);
+                    cpuValueText.innerHTML = `${data.cpu_usage_percent.toFixed(1)}<span class="percent">%</span>`;
+                    updateMiniChart(data.cpu_usage_percent);
+
+                    // Animate RAM
+                    ramProgress.style.setProperty('--prog', `${data.ram_usage_percent}%`);
+                    ramValueText.innerHTML = `${data.ram_usage_percent.toFixed(1)}<span class="percent">%</span>`;
+                    ramUsageText.innerText = `${bytesToGB(data.used_ram_bytes)} GB / ${bytesToGB(data.total_ram_bytes)} GB`;
+
+                    // Modal Update Data
+                    modalSeq.innerText = data.sequence;
+                    modalCpu.innerText = `${data.cpu_usage_percent.toFixed(4)} %`;
+                    modalRamTotal.innerText = `${data.total_ram_bytes.toLocaleString()} Bytes`;
+                    modalRamUsed.innerText = `${data.used_ram_bytes.toLocaleString()} Bytes`;
+                    modalRamFree.innerText = `${(data.total_ram_bytes - data.used_ram_bytes).toLocaleString()} Bytes`;
+
+                    // Optimizer Warning Logic
+                    if (data.ram_usage_percent > 85.0) {
+                        optimizerStatus.innerText = "CRITICAL LIMIT REACHED - TRIMMING PAGING SETS";
+                        optimizerStatus.style.color = "#ff3b30";
+                    } else {
+                        optimizerStatus.innerText = "MONITORING IDLE";
+                        optimizerStatus.style.color = "#32d74b";
+                    }
+
+                } else {
+                    setOfflineState();
+                }
+
+            } catch (e) {
+                console.error("Connection error:", e);
+                setOfflineState();
+            }
+        }
+
+        function setOfflineState() {
+            statusDot.classList.remove('online');
+            statusText.innerText = "SERVER DISCONNECTED";
+            statusText.style.color = "var(--text-secondary)";
+
+            cpuProgress.style.setProperty('--prog', `0%`);
+            cpuValueText.innerHTML = `0.0<span class="percent">%</span>`;
+
+            ramProgress.style.setProperty('--prog', `0%`);
+            ramValueText.innerHTML = `0.0<span class="percent">%</span>`;
+            ramUsageText.innerText = `0.00 GB / 0.00 GB`;
+
+            modalSeq.innerText = "---";
+            modalCpu.innerText = "0.0000 %";
+            modalRamTotal.innerText = "0 Bytes";
+            modalRamUsed.innerText = "0 Bytes";
+            modalRamFree.innerText = "0 Bytes";
+
+            optimizerStatus.innerText = "STANDBY";
+            optimizerStatus.style.color = "var(--text-tertiary)";
+        }
+
+        // Initialize
+        createMiniChart();
+
+        // High frequency polling (every 100ms) to simulate the 0-latency feel of C++
+        setInterval(pollSharedMemory, 100);
+
+        // --- NEW: Engine Control & PDF Export Logic --- //
+
+        async function controlEngine(action) {
+            try {
+                const res = await fetch(`/api/engine/${action}`, { method: 'POST' });
+                const json = await res.json();
+                console.log(json.message);
+                // The visual status will update automatically in the next 100ms tick depending on if it worked.
+            } catch (err) {
+                console.error("Failed to control engine", err);
+                alert("Control Error: Make sure backend is running.");
+            }
+        }
+
+        async function startTest() {
+            const durationInput = document.getElementById('test-duration').value;
+            const duration = parseFloat(durationInput) || 1.0;
+
+            // Show the modal
+            testModal.classList.add('active');
+
+            try {
+                // First ensure Engine is started
+                await fetch('/api/engine/start', { method: 'POST' });
+                // Then Launch the test script
+                const res = await fetch('/api/engine/start_test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ duration_minutes: duration })
+                });
+                const json = await res.json();
+                if (json.success) {
+                    document.getElementById('test-console').innerHTML = `<div class="log-time" style="color:var(--accent-blue)">⚡ Started timed test for ${duration} minutes. Waiting for logs...</div>`;
+                }
+            } catch (e) {
+                alert("Failed to start test runner.");
+            }
+        }
+
+        // Fetch logs every second
+        setInterval(async () => {
+            try {
+                const res = await fetch('/api/test_logs');
+                const logs = await res.json();
+
+                if (logs && logs.length > 0) {
+                    const consoleEl = document.getElementById('test-console');
+
+                    // Only update if auto-scrolled to bottom so we don't annoy user reading old logs
+                    const isScrolledToBottom = consoleEl.scrollHeight - consoleEl.clientHeight <= consoleEl.scrollTop + 10;
+
+                    let html = '';
+                    logs.forEach(log => {
+                        if (log.status) {
+                            html += `<div class="log-entry" style="color: #32d74b;"><span class="log-time">[${log.timestamp}]</span> ${log.status}</div>`;
+                        } else {
+                            const cpuColorClass = log.cpu > 80 ? 'log-high' : '';
+                            html += `<div class="log-entry"><span class="log-time">[${log.timestamp}]</span> <span style="color:var(--accent-purple-light)">Seq ${log.sequence}</span> - CPU: <span class="${cpuColorClass}">${log.cpu}%</span> | RAM: ${log.ram}% (${log.used_mb}MB / ${log.total_mb}MB)</div>`;
+                        }
+                    });
+
+                    consoleEl.innerHTML = html;
+
+                    if (isScrolledToBottom) {
+                        consoleEl.scrollTop = consoleEl.scrollHeight;
+                    }
+                }
+            } catch (e) {
+                // Fail silently if no logs yet
+            }
+        }, 1000);
+
+        function exportPDF() {
+            // Require jsPDF from the script tag imported in header
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Collect Current UI Values
+            const timestamp = new Date().toLocaleString();
+            const seq = modalSeq.innerText;
+            const status = statusText.innerText;
+            const cpuExact = modalCpu.innerText;
+            const ramTotal = modalRamTotal.innerText;
+            const ramUsed = modalRamUsed.innerText;
+            const ramUsageStr = ramUsageText.innerText;
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(22);
+            doc.text("Nova-Optimizer Engine Pulse", 20, 20);
+
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Generated: ${timestamp}`, 20, 28);
+
+            doc.setLineWidth(0.5);
+            doc.line(20, 32, 190, 32);
+
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.text("System State Snapshot", 20, 45);
+
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Engine Status: ${status}`, 20, 55);
+            doc.text(`Sequence Lock Tick: ${seq}`, 20, 65);
+
+            doc.setFont("helvetica", "bold");
+            doc.text("CPU Metrics:", 20, 80);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Exact CPU Usage: ${cpuExact}`, 30, 90);
+
+            doc.setFont("helvetica", "bold");
+            doc.text("Memory Metrics:", 20, 105);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Physical RAM Usage: ${ramUsageStr}`, 30, 115);
+            doc.text(`Total Bytes: ${ramTotal}`, 30, 125);
+            doc.text(`Active Working Set Bytes: ${ramUsed}`, 30, 135);
+
+            doc.setFont("helvetica", "italic");
+            doc.setFontSize(9);
+            doc.text("Data polled directly from Win32 Advanced Hardware API via Shared Memory IPC", 20, 280);
+
+            doc.save(`Nova-Pulse-${new Date().getTime()}.pdf`);
+        }
+
+        function exportTestLogsPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            const timestamp = new Date().toLocaleString();
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(22);
+            doc.text("Nova-Optimizer Test Logs", 20, 20);
+
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Generated: ${timestamp}`, 20, 28);
+
+            doc.setLineWidth(0.5);
+            doc.line(20, 32, 190, 32);
+
+            let yOffset = 45;
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "normal");
+
+            const logEntries = document.querySelectorAll('#test-console .log-entry');
+            if (logEntries.length === 0) {
+                doc.text("No test logs recorded yet.", 20, yOffset);
+            } else {
+                Array.from(logEntries).forEach((entry) => {
+                    // Auto-page wrapping for long logs
+                    if (yOffset > 280) {
+                        doc.addPage();
+                        yOffset = 20;
+                    }
+                    doc.text(entry.innerText, 20, yOffset);
+                    yOffset += 5;
+                });
+            }
+
+            doc.save(`Nova-TestLogs-${new Date().getTime()}.pdf`);
+        }
+    </script>
+</body>
+
+</html>
