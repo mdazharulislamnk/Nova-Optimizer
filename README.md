@@ -1,7 +1,11 @@
 # Nova-Optimizer
 ### Hardware-Synchronized System Engine & Telemetry Dashboard
 
-![Nova Optimizer Dashboard](dashboard_preview.png)
+![Active Engine Run Mode](preview_main.png)
+<div style="display: flex; gap: 10px;">
+  <img src="preview_metrics.png" alt="Advanced Kernel Metrics Modal" width="49%">
+  <img src="preview_test.png" alt="Timed Autonomous Test Console" width="49%">
+</div>
 
 An advanced, high-performance Producer-Consumer C++ engine that interacts directly with the Windows Kernel via the Win32 API. It monitors hardware at the millisecond level, utilizes a Lock-Free Ring Buffer to bypass mutex latency, and exposes a zero-latency Inter-Process Communication (IPC) memory-mapped API.
 
